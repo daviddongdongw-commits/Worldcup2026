@@ -1,0 +1,818 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>2026 FIFA 世界杯看板</title>
+<style>
+  :root {
+    --primary: #56042e;
+    --primary-light: #7a1a4a;
+    --accent: #c8a415;
+    --accent-light: #e8c835;
+    --bg-dark: #0a0e1a;
+    --bg-card: #131928;
+    --bg-card-hover: #1a2238;
+    --border: #1e2a42;
+    --text: #e8e8e8;
+    --text-muted: #8892a8;
+    --green: #2ecc71;
+    --orange: #e67e22;
+    --red: #e74c3c;
+    --live-pulse: #ff4757;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Helvetica Neue', Arial, sans-serif;
+    background: var(--bg-dark);
+    color: var(--text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    overscroll-behavior: none;
+  }
+  .header {
+    background: linear-gradient(135deg, var(--primary) 0%, #2d0118 50%, #0a0e1a 100%);
+    padding: 14px 16px 10px;
+    position: sticky; top: 0; z-index: 100;
+    border-bottom: 2px solid var(--accent);
+  }
+  .header-top {
+    display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px;
+  }
+  .header h1 {
+    font-size: 19px; font-weight: 800;
+    background: linear-gradient(135deg, #fff 0%, var(--accent-light) 100%);
+    -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    background-clip: text; letter-spacing: 0.5px;
+  }
+  .trophy-icon { font-size: 26px; line-height: 1; }
+  .header-sub {
+    font-size: 11px; color: var(--text-muted);
+    display: flex; align-items: center; gap: 6px;
+  }
+  .header-sub .dot {
+    width: 6px; height: 6px; border-radius: 50%;
+    background: var(--green); display: inline-block;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%,100% { opacity:1; } 50% { opacity:0.4; }
+  }
+  .refresh-btn {
+    background: none; border: 1.5px solid var(--border);
+    color: var(--text-muted); padding: 5px 10px; border-radius: 8px;
+    font-size: 11px; cursor: pointer;
+    display: flex; align-items: center; gap: 3px; transition: all 0.2s;
+  }
+  .refresh-btn:active {
+    background: rgba(200,164,21,0.1); border-color: var(--accent); color: var(--accent);
+  }
+  .refresh-btn.loading .icon { animation: spin 1s linear infinite; }
+  @keyframes spin { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+
+  .tab-nav {
+    display: flex; gap: 0; padding: 0 12px;
+    background: var(--bg-dark); border-bottom: 1px solid var(--border);
+    overflow-x: auto; -webkit-overflow-scrolling: touch;
+    scrollbar-width: none; position: sticky; top: 64px; z-index: 99;
+  }
+  .tab-nav::-webkit-scrollbar { display: none; }
+  .tab-btn {
+    flex-shrink: 0; padding: 9px 12px; font-size: 12.5px; font-weight: 600;
+    color: var(--text-muted); background: none; border: none;
+    border-bottom: 2px solid transparent; cursor: pointer;
+    transition: all 0.2s; white-space: nowrap;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab-btn:active { transform: scale(0.95); }
+
+  .content { padding: 10px 10px 76px; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; animation: fadeIn 0.25s ease; }
+  @keyframes fadeIn {
+    from { opacity:0; transform:translateY(6px); }
+    to { opacity:1; transform:translateY(0); }
+  }
+
+  .save-hint {
+    text-align: center; font-size: 11px; color: var(--text-muted);
+    padding: 6px; margin-bottom: 8px;
+  }
+
+  .group-card {
+    background: var(--bg-card); border-radius: 14px;
+    margin-bottom: 14px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .group-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 10px 14px;
+    background: linear-gradient(135deg, rgba(86,4,46,0.4) 0%, rgba(86,4,46,0.1) 100%);
+    border-bottom: 1px solid var(--border);
+  }
+  .group-label { font-size: 14px; font-weight: 700; color: var(--accent); }
+  .group-teams { font-size: 11px; color: var(--text-muted); }
+
+  .match-row {
+    display: flex; align-items: center; padding: 8px 10px;
+    border-bottom: 1px solid rgba(30,42,66,0.5);
+    gap: 6px; min-height: 52px;
+  }
+  .match-row:last-child { border-bottom: none; }
+
+  .match-time {
+    font-size: 10px; color: var(--text-muted); text-align: center;
+    min-width: 38px; flex-shrink: 0; line-height: 1.3;
+  }
+  .match-time .date { font-size: 11px; font-weight: 700; color: var(--text); display: block; }
+  .match-time .kickoff { font-size: 10px; color: var(--accent); font-weight: 600; }
+
+  .team-cell {
+    flex: 1; display: flex; align-items: center; gap: 4px; min-width: 0;
+  }
+  .team-cell.right { flex-direction: row-reverse; text-align: right; }
+  .team-flag { font-size: 20px; line-height: 1; flex-shrink: 0; }
+  .team-name {
+    font-size: 12px; font-weight: 600;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+
+  .score-box {
+    display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+  }
+  .score-input {
+    width: 28px; height: 28px; border-radius: 7px;
+    border: 1.5px solid var(--border); background: rgba(255,255,255,0.05);
+    color: var(--text); font-size: 15px; font-weight: 700;
+    text-align: center; outline: none; transition: all 0.2s;
+    -webkit-appearance: none; padding: 0;
+  }
+  .score-input:focus {
+    border-color: var(--accent); background: rgba(200,164,21,0.1);
+    box-shadow: 0 0 0 2px rgba(200,164,21,0.12);
+  }
+  .score-input.has-value {
+    border-color: var(--accent); background: rgba(200,164,21,0.15);
+    color: var(--accent-light);
+  }
+  .score-divider { color: var(--text-muted); font-size: 13px; font-weight: 300; }
+
+  /* 比赛状态 */
+  .status-upcoming { background: rgba(46,204,113,0.12); color: var(--green); }
+  .status-finished { background: rgba(200,164,21,0.15); color: var(--accent); }
+  .match-status {
+    font-size: 9px; padding: 2px 5px; border-radius: 5px;
+    font-weight: 600; flex-shrink: 0; text-align: center; min-width: 30px;
+  }
+
+  /* 积分榜 */
+  .standings-table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  .standings-table th {
+    padding: 7px 4px; text-align: center; color: var(--text-muted);
+    font-weight: 600; font-size: 10px;
+    border-bottom: 1px solid var(--border); background: rgba(86,4,46,0.15);
+  }
+  .standings-table th:first-child { text-align: left; padding-left: 10px; }
+  .standings-table td {
+    padding: 7px 4px; text-align: center;
+    border-bottom: 1px solid rgba(30,42,66,0.3);
+  }
+  .standings-table td:first-child { text-align: left; padding-left: 10px; }
+  .standings-table tr:last-child td { border-bottom: none; }
+  .standings-team { display: flex; align-items: center; gap: 5px; }
+  .standings-team .flag { font-size: 16px; }
+  .standings-team .name { font-weight: 600; font-size: 11px; }
+  .qualify-line { border-top: 1px dashed rgba(200,164,21,0.3); }
+  .pos-badge {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 16px; height: 16px; border-radius: 50%;
+    font-size: 9px; font-weight: 700;
+  }
+  .pos-1 { background: rgba(200,164,21,0.3); color: var(--accent); }
+  .pos-2 { background: rgba(46,204,113,0.2); color: var(--green); }
+  .pos-3,.pos-4 { background: rgba(255,255,255,0.05); color: var(--text-muted); }
+
+  /* 底部导航 */
+  .bottom-nav {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    display: flex; background: rgba(10,14,26,0.95);
+    backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+    border-top: 1px solid var(--border);
+    padding: 5px 0; padding-bottom: calc(5px + env(safe-area-inset-bottom));
+    z-index: 100;
+  }
+  .nav-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 1px;
+    padding: 5px; border: none; background: none;
+    color: var(--text-muted); font-size: 10px; cursor: pointer; transition: color 0.2s;
+  }
+  .nav-btn.active { color: var(--accent); }
+  .nav-btn .icon { font-size: 18px; line-height: 1; }
+
+  /* Toast */
+  .toast {
+    position: fixed; top: 74px; left: 50%;
+    transform: translateX(-50%) translateY(-16px);
+    background: var(--accent); color: var(--bg-dark);
+    padding: 7px 18px; border-radius: 18px;
+    font-size: 12px; font-weight: 700;
+    opacity: 0; transition: all 0.3s ease; z-index: 200;
+    pointer-events: none; white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* 淘汰赛 */
+  .bracket-round { margin-bottom: 18px; }
+  .bracket-round-title {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    margin-bottom: 8px; padding-left: 4px;
+  }
+  .bracket-match {
+    background: var(--bg-card); border-radius: 11px;
+    margin-bottom: 6px; overflow: hidden; border: 1px solid var(--border);
+  }
+  .bracket-team {
+    display: flex; align-items: center; padding: 8px 12px; gap: 6px;
+    border-bottom: 1px solid rgba(30,42,66,0.3);
+  }
+  .bracket-team:last-child { border-bottom: none; }
+  .bracket-team .flag { font-size: 18px; }
+  .bracket-team .name { flex: 1; font-size: 12px; font-weight: 600; }
+  .bracket-team .tbd { flex: 1; font-size: 12px; color: var(--text-muted); font-style: italic; }
+  .bracket-score {
+    width: 26px; height: 26px; border-radius: 6px;
+    border: 1.5px solid var(--border); background: rgba(255,255,255,0.05);
+    color: var(--text); font-size: 13px; font-weight: 700;
+    text-align: center; outline: none; -webkit-appearance: none; padding: 0;
+  }
+  .bracket-score:focus { border-color: var(--accent); background: rgba(200,164,21,0.1); }
+  .bracket-date {
+    font-size: 10px; color: var(--text-muted); text-align: center;
+    padding: 3px; background: rgba(86,4,46,0.15);
+  }
+
+  /* 信息卡片 */
+  .info-card {
+    background: linear-gradient(135deg, rgba(86,4,46,0.3) 0%, rgba(86,4,46,0.1) 100%);
+    border: 1px solid rgba(200,164,21,0.2);
+    border-radius: 14px; padding: 14px; margin-bottom: 14px;
+  }
+  .info-card h3 { font-size: 13px; color: var(--accent); margin-bottom: 6px; }
+  .info-item {
+    display: flex; justify-content: space-between; padding: 5px 0;
+    font-size: 12px; border-bottom: 1px solid rgba(30,42,66,0.3);
+  }
+  .info-item:last-child { border-bottom: none; }
+  .info-item .label { color: var(--text-muted); }
+  .info-item .value { font-weight: 600; }
+
+  /* 日期分组标题 */
+  .date-title {
+    font-size: 13px; font-weight: 700; color: var(--accent);
+    padding: 10px 4px 6px; margin-top: 4px;
+    border-bottom: 1px solid rgba(200,164,21,0.15); margin-bottom: 6px;
+  }
+
+  /* 时区提示 */
+  .tz-hint {
+    font-size: 10px; color: var(--text-muted); text-align: center;
+    padding: 4px; background: rgba(86,4,46,0.1); border-radius: 8px;
+    margin-bottom: 8px;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <div class="header-top">
+    <h1>⚽ 2026 FIFA 世界杯</h1>
+    <span class="trophy-icon">🏆</span>
+  </div>
+  <div class="header-sub">
+    <span class="dot"></span>
+    <span>美加墨 · 6月11日 - 7月19日</span>
+    <span style="margin-left:auto">
+      <button class="refresh-btn" id="refreshBtn" onclick="refreshScores()">
+        <span class="icon">🔄</span> 刷新
+      </button>
+    </span>
+  </div>
+</div>
+
+<div class="tab-nav" id="tabNav">
+  <button class="tab-btn active" onclick="switchTab('groups')">小组赛</button>
+  <button class="tab-btn" onclick="switchTab('schedule')">赛程</button>
+  <button class="tab-btn" onclick="switchTab('standings')">积分榜</button>
+  <button class="tab-btn" onclick="switchTab('knockout')">淘汰赛</button>
+  <button class="tab-btn" onclick="switchTab('info')">信息</button>
+</div>
+
+<div class="content" id="content"></div>
+<div class="toast" id="toast"></div>
+
+<div class="bottom-nav">
+  <button class="nav-btn active" onclick="switchTab('groups')"><span class="icon">🏟️</span><span>小组赛</span></button>
+  <button class="nav-btn" onclick="switchTab('schedule')"><span class="icon">📅</span><span>赛程</span></button>
+  <button class="nav-btn" onclick="switchTab('standings')"><span class="icon">📊</span><span>积分</span></button>
+  <button class="nav-btn" onclick="switchTab('knockout')"><span class="icon">🏆</span><span>淘汰赛</span></button>
+  <button class="nav-btn" onclick="switchTab('info')"><span class="icon">ℹ️</span><span>信息</span></button>
+</div>
+
+<script>
+// ===== 全部48支确定球队（新华网 2026-04-01 确认）=====
+const T = {
+  MEX: { flag:'🇲🇽', name:'墨西哥' },
+  RSA: { flag:'🇿🇦', name:'南非' },
+  KOR: { flag:'🇰🇷', name:'韩国' },
+  CZE: { flag:'🇨🇿', name:'捷克' },
+  CAN: { flag:'🇨🇦', name:'加拿大' },
+  BIH: { flag:'🇧🇦', name:'波黑' },
+  QAT: { flag:'🇶🇦', name:'卡塔尔' },
+  SUI: { flag:'🇨🇭', name:'瑞士' },
+  BRA: { flag:'🇧🇷', name:'巴西' },
+  MAR: { flag:'🇲🇦', name:'摩洛哥' },
+  HAI: { flag:'🇭🇹', name:'海地' },
+  SCO: { flag:'🏴󠁧󠁢󠁳󠁣󠁴󠁿', name:'苏格兰' },
+  USA: { flag:'🇺🇸', name:'美国' },
+  PAR: { flag:'🇵🇾', name:'巴拉圭' },
+  AUS: { flag:'🇦🇺', name:'澳大利亚' },
+  TUR: { flag:'🇹🇷', name:'土耳其' },
+  GER: { flag:'🇩🇪', name:'德国' },
+  CUW: { flag:'🇨🇼', name:'库拉索' },
+  CIV: { flag:'🇨🇮', name:'科特迪瓦' },
+  ECU: { flag:'🇪🇨', name:'厄瓜多尔' },
+  NED: { flag:'🇳🇱', name:'荷兰' },
+  JPN: { flag:'🇯🇵', name:'日本' },
+  SWE: { flag:'🇸🇪', name:'瑞典' },
+  TUN: { flag:'🇹🇳', name:'突尼斯' },
+  BEL: { flag:'🇧🇪', name:'比利时' },
+  EGY: { flag:'🇪🇬', name:'埃及' },
+  IRN: { flag:'🇮🇷', name:'伊朗' },
+  NZL: { flag:'🇳🇿', name:'新西兰' },
+  ESP: { flag:'🇪🇸', name:'西班牙' },
+  CPV: { flag:'🇨🇻', name:'佛得角' },
+  KSA: { flag:'🇸🇦', name:'沙特' },
+  URU: { flag:'🇺🇾', name:'乌拉圭' },
+  FRA: { flag:'🇫🇷', name:'法国' },
+  SEN: { flag:'🇸🇳', name:'塞内加尔' },
+  IRQ: { flag:'🇮🇶', name:'伊拉克' },
+  NOR: { flag:'🇳🇴', name:'挪威' },
+  ARG: { flag:'🇦🇷', name:'阿根廷' },
+  ALG: { flag:'🇩🇿', name:'阿尔及利亚' },
+  AUT: { flag:'🇦🇹', name:'奥地利' },
+  JOR: { flag:'🇯🇴', name:'约旦' },
+  POR: { flag:'🇵🇹', name:'葡萄牙' },
+  COD: { flag:'🇨🇩', name:'刚果(金)' },
+  UZB: { flag:'🇺🇿', name:'乌兹别克斯坦' },
+  COL: { flag:'🇨🇴', name:'哥伦比亚' },
+  ENG: { flag:'🏴󠁧󠁢󠁥󠁮󠁧󠁿', name:'英格兰' },
+  CRO: { flag:'🇭🇷', name:'克罗地亚' },
+  GHA: { flag:'🇬🇭', name:'加纳' },
+  PAN: { flag:'🇵🇦', name:'巴拿马' }
+};
+
+// ===== 小组定义（按字母顺序排位）=====
+const GROUPS = {
+  A: { name:'A组', teams:['MEX','RSA','KOR','CZE'] },
+  B: { name:'B组', teams:['CAN','BIH','QAT','SUI'] },
+  C: { name:'C组', teams:['BRA','MAR','HAI','SCO'] },
+  D: { name:'D组', teams:['USA','PAR','AUS','TUR'] },
+  E: { name:'E组', teams:['GER','CUW','CIV','ECU'] },
+  F: { name:'F组', teams:['NED','JPN','SWE','TUN'] },
+  G: { name:'G组', teams:['BEL','EGY','IRN','NZL'] },
+  H: { name:'H组', teams:['ESP','CPV','KSA','URU'] },
+  I: { name:'I组', teams:['FRA','SEN','IRQ','NOR'] },
+  J: { name:'J组', teams:['ARG','ALG','AUT','JOR'] },
+  K: { name:'K组', teams:['POR','COD','UZB','COL'] },
+  L: { name:'L组', teams:['ENG','CRO','GHA','PAN'] }
+};
+
+// ===== 全部72场小组赛（数据来源：Al Jazeera + Sky Sports）
+// 日期为北京时间 CST(UTC+8)，m=月份(6=六月)，d=日期，t=开赛时间(CST)
+const ALL_MATCHES = [
+  // === 第1比赛日：6月12日(周五) ===
+  { id:'A1', g:'A', home:'MEX', away:'RSA', m:6, d:12, t:'03:00', venue:'墨西哥城' },
+  { id:'A2', g:'A', home:'KOR', away:'CZE', m:6, d:12, t:'10:00', venue:'瓜达拉哈拉' },
+  // === 6月13日(周六) ===
+  { id:'B1', g:'B', home:'CAN', away:'BIH', m:6, d:13, t:'03:00', venue:'多伦多' },
+  { id:'D1', g:'D', home:'USA', away:'PAR', m:6, d:13, t:'09:00', venue:'洛杉矶' },
+  // === 6月14日(周日) ===
+  { id:'B2', g:'B', home:'QAT', away:'SUI', m:6, d:14, t:'03:00', venue:'旧金山' },
+  { id:'C1', g:'C', home:'BRA', away:'MAR', m:6, d:14, t:'06:00', venue:'新泽西' },
+  { id:'C2', g:'C', home:'HAI', away:'SCO', m:6, d:14, t:'09:00', venue:'波士顿' },
+  { id:'D2', g:'D', home:'AUS', away:'TUR', m:6, d:14, t:'12:00', venue:'温哥华' },
+  // === 6月15日(周一) ===
+  { id:'E1', g:'E', home:'GER', away:'CUW', m:6, d:15, t:'01:00', venue:'休斯顿' },
+  { id:'F1', g:'F', home:'NED', away:'JPN', m:6, d:15, t:'04:00', venue:'达拉斯' },
+  { id:'E2', g:'E', home:'CIV', away:'ECU', m:6, d:15, t:'07:00', venue:'费城' },
+  { id:'F2', g:'F', home:'SWE', away:'TUN', m:6, d:15, t:'10:00', venue:'蒙特雷' },
+  // === 6月16日(周二) ===
+  { id:'H1', g:'H', home:'ESP', away:'CPV', m:6, d:16, t:'00:00', venue:'亚特兰大' },
+  { id:'G1', g:'G', home:'BEL', away:'EGY', m:6, d:16, t:'03:00', venue:'温哥华' },
+  { id:'H2', g:'H', home:'KSA', away:'URU', m:6, d:16, t:'06:00', venue:'迈阿密' },
+  { id:'G2', g:'G', home:'IRN', away:'NZL', m:6, d:16, t:'09:00', venue:'洛杉矶' },
+  // === 6月17日(周三) ===
+  { id:'I1', g:'I', home:'FRA', away:'SEN', m:6, d:17, t:'03:00', venue:'新泽西' },
+  { id:'I2', g:'I', home:'IRQ', away:'NOR', m:6, d:17, t:'06:00', venue:'波士顿' },
+  { id:'J1', g:'J', home:'ARG', away:'ALG', m:6, d:17, t:'09:00', venue:'堪萨斯城' },
+  { id:'J2', g:'J', home:'AUT', away:'JOR', m:6, d:17, t:'12:00', venue:'旧金山' },
+  // === 6月18日(周四) ===
+  { id:'K1', g:'K', home:'POR', away:'COD', m:6, d:18, t:'01:00', venue:'休斯顿' },
+  { id:'L1', g:'L', home:'ENG', away:'CRO', m:6, d:18, t:'04:00', venue:'达拉斯' },
+  { id:'L2', g:'L', home:'GHA', away:'PAN', m:6, d:18, t:'07:00', venue:'多伦多' },
+  { id:'K2', g:'K', home:'UZB', away:'COL', m:6, d:18, t:'10:00', venue:'墨西哥城' },
+  // === 6月19日(周五) - 第2轮开始 ===
+  { id:'A3', g:'A', home:'CZE', away:'RSA', m:6, d:19, t:'00:00', venue:'亚特兰大' },
+  { id:'B3', g:'B', home:'SUI', away:'BIH', m:6, d:19, t:'03:00', venue:'洛杉矶' },
+  { id:'B4', g:'B', home:'CAN', away:'QAT', m:6, d:19, t:'06:00', venue:'温哥华' },
+  { id:'A4', g:'A', home:'MEX', away:'KOR', m:6, d:19, t:'09:00', venue:'瓜达拉哈拉' },
+  // === 6月20日(周六) ===
+  { id:'C3', g:'C', home:'SCO', away:'MAR', m:6, d:20, t:'06:00', venue:'波士顿' },
+  { id:'D3', g:'D', home:'USA', away:'AUS', m:6, d:20, t:'03:00', venue:'西雅图' },
+  { id:'C4', g:'C', home:'BRA', away:'HAI', m:6, d:20, t:'08:30', venue:'费城' },
+  { id:'D4', g:'D', home:'TUR', away:'PAR', m:6, d:20, t:'11:00', venue:'旧金山' },
+  // === 6月21日(周日) ===
+  { id:'F3', g:'F', home:'NED', away:'SWE', m:6, d:21, t:'01:00', venue:'休斯顿' },
+  { id:'E3', g:'E', home:'GER', away:'CIV', m:6, d:21, t:'04:00', venue:'多伦多' },
+  { id:'E4', g:'E', home:'ECU', away:'CUW', m:6, d:21, t:'08:00', venue:'堪萨斯城' },
+  { id:'F4', g:'F', home:'TUN', away:'JPN', m:6, d:21, t:'12:00', venue:'蒙特雷' },
+  // === 6月22日(周一) ===
+  { id:'H3', g:'H', home:'ESP', away:'KSA', m:6, d:22, t:'00:00', venue:'亚特兰大' },
+  { id:'G3', g:'G', home:'BEL', away:'IRN', m:6, d:22, t:'03:00', venue:'洛杉矶' },
+  { id:'H4', g:'H', home:'URU', away:'CPV', m:6, d:22, t:'06:00', venue:'迈阿密' },
+  { id:'G4', g:'G', home:'NZL', away:'EGY', m:6, d:22, t:'09:00', venue:'温哥华' },
+  // === 6月23日(周二) ===
+  { id:'J3', g:'J', home:'ARG', away:'AUT', m:6, d:23, t:'01:00', venue:'达拉斯' },
+  { id:'I3', g:'I', home:'FRA', away:'IRQ', m:6, d:23, t:'05:00', venue:'费城' },
+  { id:'I4', g:'I', home:'NOR', away:'SEN', m:6, d:23, t:'08:00', venue:'新泽西' },
+  { id:'J4', g:'J', home:'JOR', away:'ALG', m:6, d:23, t:'11:00', venue:'旧金山' },
+  // === 6月24日(周三) ===
+  { id:'K3', g:'K', home:'POR', away:'UZB', m:6, d:24, t:'01:00', venue:'休斯顿' },
+  { id:'L3', g:'L', home:'ENG', away:'GHA', m:6, d:24, t:'04:00', venue:'波士顿' },
+  { id:'L4', g:'L', home:'PAN', away:'CRO', m:6, d:24, t:'07:00', venue:'多伦多' },
+  { id:'K4', g:'K', home:'COL', away:'COD', m:6, d:24, t:'10:00', venue:'瓜达拉哈拉' },
+  // === 6月25日(周四) - 第3轮开始 ===
+  { id:'B5', g:'B', home:'SUI', away:'CAN', m:6, d:25, t:'03:00', venue:'温哥华' },
+  { id:'B6', g:'B', home:'BIH', away:'QAT', m:6, d:25, t:'03:00', venue:'西雅图' },
+  { id:'C5', g:'C', home:'SCO', away:'BRA', m:6, d:25, t:'06:00', venue:'迈阿密' },
+  { id:'C6', g:'C', home:'MAR', away:'HAI', m:6, d:25, t:'06:00', venue:'亚特兰大' },
+  { id:'A5', g:'A', home:'CZE', away:'MEX', m:6, d:25, t:'09:00', venue:'墨西哥城' },
+  { id:'A6', g:'A', home:'RSA', away:'KOR', m:6, d:25, t:'09:00', venue:'蒙特雷' },
+  // === 6月26日(周五) ===
+  { id:'E5', g:'E', home:'ECU', away:'GER', m:6, d:26, t:'04:00', venue:'新泽西' },
+  { id:'E6', g:'E', home:'CUW', away:'CIV', m:6, d:26, t:'04:00', venue:'费城' },
+  { id:'F5', g:'F', home:'JPN', away:'SWE', m:6, d:26, t:'07:00', venue:'达拉斯' },
+  { id:'F6', g:'F', home:'TUN', away:'NED', m:6, d:26, t:'07:00', venue:'堪萨斯城' },
+  { id:'D5', g:'D', home:'TUR', away:'USA', m:6, d:26, t:'10:00', venue:'洛杉矶' },
+  { id:'D6', g:'D', home:'PAR', away:'AUS', m:6, d:26, t:'10:00', venue:'旧金山' },
+  // === 6月27日(周六) ===
+  { id:'I5', g:'I', home:'NOR', away:'FRA', m:6, d:27, t:'03:00', venue:'波士顿' },
+  { id:'I6', g:'I', home:'SEN', away:'IRQ', m:6, d:27, t:'03:00', venue:'多伦多' },
+  { id:'H5', g:'H', home:'CPV', away:'KSA', m:6, d:27, t:'08:00', venue:'休斯顿' },
+  { id:'H6', g:'H', home:'URU', away:'ESP', m:6, d:27, t:'08:00', venue:'瓜达拉哈拉' },
+  { id:'G5', g:'G', home:'EGY', away:'IRN', m:6, d:27, t:'11:00', venue:'西雅图' },
+  { id:'G6', g:'G', home:'NZL', away:'BEL', m:6, d:27, t:'11:00', venue:'温哥华' },
+  // === 6月28日(周日) ===
+  { id:'L5', g:'L', home:'PAN', away:'ENG', m:6, d:28, t:'05:00', venue:'新泽西' },
+  { id:'L6', g:'L', home:'CRO', away:'GHA', m:6, d:28, t:'05:00', venue:'费城' },
+  { id:'K5', g:'K', home:'COL', away:'POR', m:6, d:28, t:'07:30', venue:'迈阿密' },
+  { id:'K6', g:'K', home:'COD', away:'UZB', m:6, d:28, t:'07:30', venue:'亚特兰大' },
+  { id:'J5', g:'J', home:'ALG', away:'AUT', m:6, d:28, t:'10:00', venue:'堪萨斯城' },
+  { id:'J6', g:'J', home:'JOR', away:'ARG', m:6, d:28, t:'10:00', venue:'达拉斯' }
+];
+
+// ===== 本地存储 =====
+function getScores() {
+  try { return JSON.parse(localStorage.getItem('wc2026_v2') || '{}'); } catch { return {}; }
+}
+function saveScore(matchId, homeScore, awayScore) {
+  const scores = getScores();
+  scores[matchId] = { h: homeScore, a: awayScore };
+  localStorage.setItem('wc2026_v2', JSON.stringify(scores));
+}
+function getScore(matchId) { return getScores()[matchId] || null; }
+
+// ===== Tab 切换 =====
+let currentTab = 'groups';
+function switchTab(tab) {
+  currentTab = tab;
+  const tabs = ['groups','schedule','standings','knockout','info'];
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===tab));
+  document.querySelectorAll('.nav-btn').forEach((b,i) => b.classList.toggle('active', tabs[i]===tab));
+  renderContent(tab);
+}
+
+function renderContent(tab) {
+  const el = document.getElementById('content');
+  switch(tab) {
+    case 'groups': el.innerHTML = renderGroups(); break;
+    case 'schedule': el.innerHTML = renderSchedule(); break;
+    case 'standings': el.innerHTML = renderStandings(); break;
+    case 'knockout': el.innerHTML = renderKnockout(); break;
+    case 'info': el.innerHTML = renderInfo(); break;
+  }
+  bindInputs();
+}
+
+// ===== 小组赛视图 =====
+function renderGroups() {
+  let html = '<div class="tz-hint">🕐 所有时间为北京时间（CST）· 点击比分框输入预测</div>';
+  Object.keys(GROUPS).forEach(gk => {
+    const g = GROUPS[gk];
+    const matches = ALL_MATCHES.filter(m => m.g === gk);
+    html += `<div class="group-card">
+      <div class="group-header">
+        <span class="group-label">${g.name}</span>
+        <span class="group-teams">${g.teams.map(c => T[c].name).join(' · ')}</span>
+      </div>`;
+    matches.forEach(m => {
+      const sc = getScore(m.id);
+      const hs = sc ? sc.h : ''; const as = sc ? sc.a : '';
+      const hv = sc !== null;
+      html += `<div class="match-row">
+        <div class="match-time">
+          <span class="date">${m.m}/${m.d}</span>
+          <span class="kickoff">${m.t}</span>
+        </div>
+        <div class="team-cell">
+          <span class="team-name">${T[m.home].name}</span>
+        </div>
+        <div class="score-box">
+          <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
+            data-match="${m.id}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
+          <span class="score-divider">-</span>
+          <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
+            data-match="${m.id}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="team-cell right">
+          <span class="team-name">${T[m.away].name}</span>
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  return html;
+}
+
+// ===== 赛程视图（按日期排列）=====
+function renderSchedule() {
+  let html = '<div class="tz-hint">🕐 按日期排列 · 北京时间（CST）</div>';
+  let curDate = '';
+  ALL_MATCHES.forEach(m => {
+    const dateStr = `${m.m}月${m.d}日`;
+    const weekDay = ['日','一','二','三','四','五','六'][new Date(2026, m.m-1, m.d).getDay()];
+    const dateLabel = `${dateStr}（周${weekDay}）`;
+    if (dateLabel !== curDate) {
+      if (curDate) html += '</div>';
+      html += `<div class="date-title">📅 ${dateLabel}</div><div>`;
+      curDate = dateLabel;
+    }
+    const sc = getScore(m.id);
+    const hs = sc ? sc.h : ''; const as = sc ? sc.a : '';
+    const hv = sc !== null;
+    html += `<div class="match-row" style="background:var(--bg-card);border-radius:10px;margin-bottom:5px;border:1px solid var(--border);">
+      <div class="match-time">
+        <span class="kickoff">${m.t}</span>
+      </div>
+      <div style="font-size:10px;color:var(--accent);min-width:22px;font-weight:700;text-align:center;flex-shrink:0;">${m.g}</div>
+      <div class="team-cell">
+        <span class="team-name">${T[m.home].name}</span>
+      </div>
+      <div class="score-box">
+        <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
+          data-match="${m.id}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
+        <span class="score-divider">-</span>
+        <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
+          data-match="${m.id}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
+      </div>
+      <div class="team-cell right">
+        <span class="team-name">${T[m.away].name}</span>
+      </div>
+    </div>`;
+  });
+  html += '</div>';
+  return html;
+}
+
+// ===== 积分榜 =====
+function renderStandings() {
+  let html = '';
+  Object.keys(GROUPS).forEach(gk => {
+    const g = GROUPS[gk];
+    const matches = ALL_MATCHES.filter(m => m.g === gk);
+    const standings = g.teams.map(code => ({
+      code, ...T[code],
+      played:0, won:0, drawn:0, lost:0, gf:0, ga:0, gd:0, pts:0
+    }));
+    const idx = {};
+    standings.forEach((s,i) => idx[s.code] = i);
+    matches.forEach(m => {
+      const sc = getScore(m.id);
+      if (sc && sc.h !== '' && sc.a !== '') {
+        const hs = parseInt(sc.h), as = parseInt(sc.a);
+        const hi = idx[m.home], ai = idx[m.away];
+        standings[hi].played++; standings[ai].played++;
+        standings[hi].gf += hs; standings[hi].ga += as;
+        standings[ai].gf += as; standings[ai].ga += hs;
+        if (hs > as) { standings[hi].won++; standings[hi].pts+=3; standings[ai].lost++; }
+        else if (hs < as) { standings[ai].won++; standings[ai].pts+=3; standings[hi].lost++; }
+        else { standings[hi].drawn++; standings[ai].drawn++; standings[hi].pts++; standings[ai].pts++; }
+      }
+    });
+    standings.forEach(s => s.gd = s.gf - s.ga);
+    standings.sort((a,b) => b.pts-a.pts || b.gd-a.gd || b.gf-a.gf);
+
+    html += `<div class="group-card">
+      <div class="group-header">
+        <span class="group-label">${g.name}</span>
+        <span class="group-teams">${g.teams.map(c => T[c].name).join(' · ')}</span>
+      </div>
+      <table class="standings-table">
+        <thead><tr>
+          <th style="width:18px">#</th><th style="text-align:left">球队</th>
+          <th style="width:22px">赛</th><th style="width:22px">胜</th>
+          <th style="width:22px">平</th><th style="width:22px">负</th>
+          <th style="width:28px">净胜</th><th style="width:28px">积分</th>
+        </tr></thead><tbody>`;
+    standings.forEach((s,i) => {
+      const pc = i<2 ? `pos-${i+1}` : `pos-${i+1}`;
+      const ql = i===2 ? 'qualify-line' : '';
+      html += `<tr class="${ql}">
+        <td><span class="pos-badge ${pc}">${i+1}</span></td>
+        <td><div class="standings-team"><span class="name">${s.name}</span></div></td>
+        <td>${s.played}</td><td>${s.won}</td><td>${s.drawn}</td><td>${s.lost}</td>
+        <td style="color:${s.gd>0?'var(--green)':s.gd<0?'var(--red)':'var(--text-muted)'}">${s.gd>0?'+':''}${s.gd}</td>
+        <td style="font-weight:700;color:var(--accent)">${s.pts}</td>
+      </tr>`;
+    });
+    html += '</tbody></table></div>';
+  });
+  return html;
+}
+
+// ===== 淘汰赛 =====
+function renderKnockout() {
+  // 淘汰赛赛程（CST）
+  const rounds = [
+    { title:'🏟️ 1/16 决赛（6月29日 - 7月4日）', matches: [
+      { h:'B组第2名',a:'A组第2名',date:'6/29 03:00'},
+      { h:'C组第1名',a:'F组第2名',date:'6/30 01:00'},
+      { h:'E组第1名',a:'最佳第3名①',date:'6/30 04:30'},
+      { h:'F组第1名',a:'C组第2名',date:'6/30 09:00'},
+      { h:'E组第2名',a:'I组第2名',date:'7/1 01:00'},
+      { h:'I组第1名',a:'最佳第3名②',date:'7/1 05:00'},
+      { h:'A组第1名',a:'最佳第3名③',date:'7/1 09:00'},
+      { h:'L组第1名',a:'最佳第3名④',date:'7/2 00:00'},
+      { h:'G组第1名',a:'最佳第3名⑤',date:'7/2 04:00'},
+      { h:'D组第1名',a:'最佳第3名⑥',date:'7/2 08:00'},
+      { h:'H组第1名',a:'J组第2名',date:'7/3 03:00'},
+      { h:'K组第2名',a:'L组第2名',date:'7/3 07:00'},
+      { h:'B组第1名',a:'最佳第3名⑦',date:'7/3 11:00'},
+      { h:'D组第2名',a:'G组第2名',date:'7/4 02:00'},
+      { h:'J组第1名',a:'H组第2名',date:'7/4 06:00'},
+      { h:'K组第1名',a:'最佳第3名⑧',date:'7/4 09:30'}
+    ]},
+    { title:'⚡ 1/8 决赛（7月5日 - 7月8日）', matches: [
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/5 01:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/5 05:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/6 04:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/6 08:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/7 03:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/7 08:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/8 00:00'},
+      { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/8 04:00'}
+    ]},
+    { title:'🔥 1/4 决赛（7月10日 - 7月12日）', matches: [
+      { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/10 04:00'},
+      { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/11 03:00'},
+      { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/12 05:00'},
+      { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/12 09:00'}
+    ]},
+    { title:'🌟 半决赛（7月15日 - 7月16日）', matches: [
+      { h:'1/4决赛胜者',a:'1/4决赛胜者',date:'7/15 03:00'},
+      { h:'1/4决赛胜者',a:'1/4决赛胜者',date:'7/16 03:00'}
+    ]},
+    { title:'🥉 三四名决赛（7月19日）', matches: [
+      { h:'半决赛负方',a:'半决赛负方',date:'7/19 05:00'}
+    ]},
+    { title:'🏆 决赛（7月20日 · 新泽西）', matches: [
+      { h:'半决赛胜方',a:'半决赛胜方',date:'7/20 03:00'}
+    ]}
+  ];
+  let html = '<div class="tz-hint">🏆 淘汰赛 · 北京时间（CST）</div>';
+  rounds.forEach(r => {
+    html += `<div class="bracket-round"><div class="bracket-round-title">${r.title}</div>`;
+    r.matches.forEach((m,i) => {
+      const mid = `ko_${r.title.substring(2,6)}_${i}`;
+      const sc = getScore(mid);
+      const hs = sc?sc.h:'', as = sc?sc.a:'';
+      html += `<div class="bracket-match">
+        <div class="bracket-date">${m.date} CST</div>
+        <div class="bracket-team">
+          <span class="flag">⚽</span><span class="tbd">${m.h}</span>
+          <input class="bracket-score" type="number" min="0" max="99" data-match="${mid}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="bracket-team">
+          <span class="flag">⚽</span><span class="tbd">${m.a}</span>
+          <input class="bracket-score" type="number" min="0" max="99" data-match="${mid}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
+        </div>
+      </div>`;
+    });
+    html += '</div>';
+  });
+  return html;
+}
+
+// ===== 赛事信息 =====
+function renderInfo() {
+  return `
+    <div class="info-card">
+      <h3>🏆 2026 FIFA 世界杯（美加墨）</h3>
+      <div class="info-item"><span class="label">主办国</span><span class="value">美国 · 加拿大 · 墨西哥</span></div>
+      <div class="info-item"><span class="label">比赛日期</span><span class="value">2026年6月11日 - 7月19日</span></div>
+      <div class="info-item"><span class="label">参赛队伍</span><span class="value">48 支（历史首次扩军）</span></div>
+      <div class="info-item"><span class="label">比赛场次</span><span class="value">104 场</span></div>
+      <div class="info-item"><span class="label">举办城市</span><span class="value">16 座城市</span></div>
+    </div>
+    <div class="info-card">
+      <h3>📅 赛程安排</h3>
+      <div class="info-item"><span class="label">小组赛</span><span class="value">6月12日 - 6月28日（北京时间）</span></div>
+      <div class="info-item"><span class="label">1/16 决赛</span><span class="value">6月29日 - 7月4日</span></div>
+      <div class="info-item"><span class="label">1/8 决赛</span><span class="value">7月5日 - 7月8日</span></div>
+      <div class="info-item"><span class="label">1/4 决赛</span><span class="value">7月10日 - 7月12日</span></div>
+      <div class="info-item"><span class="label">半决赛</span><span class="value">7月15日 - 7月16日</span></div>
+      <div class="info-item"><span class="label">三四名</span><span class="value">7月19日</span></div>
+      <div class="info-item"><span class="label">决赛</span><span class="value">7月20日 03:00 新泽西</span></div>
+    </div>
+    <div class="info-card">
+      <h3>📋 晋级规则</h3>
+      <div class="info-item"><span class="label">小组赛</span><span class="value">12组 × 4队，单循环</span></div>
+      <div class="info-item"><span class="label">出线规则</span><span class="value">每组前2名 + 8支最佳第3名</span></div>
+      <div class="info-item"><span class="label">淘汰赛</span><span class="value">32强 → 16强 → 8强 → 4强 → 决赛</span></div>
+    </div>
+    <div class="info-card">
+      <h3>🏟️ 揭幕战</h3>
+      <div class="info-item"><span class="label">对阵</span><span class="value">墨西哥 vs 南非</span></div>
+      <div class="info-item"><span class="label">时间</span><span class="value">6月12日 凌晨03:00（北京时间）</span></div>
+      <div class="info-item"><span class="label">场地</span><span class="value">阿兹特克球场，墨西哥城</span></div>
+    </div>
+    <div class="info-card" style="border-color:rgba(46,204,113,0.3);background:linear-gradient(135deg,rgba(46,204,113,0.1) 0%,rgba(46,204,113,0.03) 100%);">
+      <h3 style="color:var(--green);">📱 使用说明</h3>
+      <div style="font-size:12px;line-height:1.8;color:var(--text-muted);">
+        ✅ 所有时间已换算为<strong style="color:var(--text)">北京时间（CST/UTC+8）</strong><br>
+        ✅ 点击比分框可输入预测比分<br>
+        ✅ 数据自动保存到浏览器本地<br>
+        ✅ 积分榜根据输入比分自动计算<br>
+        ✅ 完美适配 iPhone 手机浏览器
+      </div>
+    </div>
+  `;
+}
+
+// ===== 事件绑定 =====
+function bindInputs() {
+  document.querySelectorAll('.score-input, .bracket-score').forEach(input => {
+    input.addEventListener('change', function() {
+      const mid = this.dataset.match;
+      const side = this.dataset.side;
+      const val = this.value === '' ? '' : this.value;
+      const ex = getScore(mid) || {};
+      if (side === 'h') ex.h = val; else ex.a = val;
+      saveScore(mid, ex.h, ex.a);
+      this.classList.toggle('has-value', val !== '');
+      showToast('比分已保存 ✓');
+    });
+    input.addEventListener('focus', function() {
+      this.setAttribute('data-old', this.value); this.value = '';
+    });
+    input.addEventListener('blur', function() {
+      if (this.value === '') this.value = this.getAttribute('data-old') || '';
+    });
+  });
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._t);
+  t._t = setTimeout(() => t.classList.remove('show'), 1200);
+}
+
+async function refreshScores() {
+  const btn = document.getElementById('refreshBtn');
+  btn.classList.add('loading');
+  showToast('正在获取最新比分...');
+  try {
+    const now = new Date();
+    const isLive = now >= new Date(2026,5,11) && now <= new Date(2026,6,20);
+    if (!isLive) { showToast('赛事尚未开始，请自行输入预测'); }
+    else {
+      showToast('尝试获取实时数据...');
+    }
+  } catch(e) { showToast('网络异常，请稍后再试'); }
+  btn.classList.remove('loading');
+}
+
+document.addEventListener('DOMContentLoaded', () => renderContent('groups'));
+</script>
+</body>
+</html>
