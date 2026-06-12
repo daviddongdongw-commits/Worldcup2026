@@ -113,9 +113,9 @@
   .group-teams { font-size: 11px; color: var(--text-muted); }
 
   .match-row {
-    display: flex; align-items: center; padding: 8px 10px;
+    display: flex; align-items: center; padding: 7px 10px;
     border-bottom: 1px solid rgba(30,42,66,0.5);
-    gap: 6px; min-height: 52px;
+    gap: 5px; min-height: 44px;
   }
   .match-row:last-child { border-bottom: none; }
 
@@ -137,14 +137,14 @@
   }
 
   .score-box {
-    display: flex; align-items: center; gap: 3px; flex-shrink: 0;
+    display: flex; align-items: center; gap: 2px; flex-shrink: 0;
   }
   .score-input {
-    width: 28px; height: 28px; border-radius: 7px;
+    width: 24px; height: 24px; border-radius: 5px;
     border: 1.5px solid var(--border); background: rgba(255,255,255,0.05);
-    color: var(--text); font-size: 15px; font-weight: 700;
+    color: var(--text); font-size: 12px; font-weight: 700;
     text-align: center; outline: none; transition: all 0.2s;
-    -webkit-appearance: none; padding: 0;
+    -webkit-appearance: none; padding: 0; line-height: 24px;
   }
   .score-input:focus {
     border-color: var(--accent); background: rgba(200,164,21,0.1);
@@ -154,7 +154,11 @@
     border-color: var(--accent); background: rgba(200,164,21,0.15);
     color: var(--accent-light);
   }
-  .score-divider { color: var(--text-muted); font-size: 13px; font-weight: 300; }
+  .score-input.api-score {
+    border-color: var(--green); background: rgba(46,204,113,0.12);
+    color: var(--green); font-weight: 800; pointer-events: none;
+  }
+  .score-divider { color: var(--text-muted); font-size: 11px; font-weight: 300; }
 
   /* 比赛状态 */
   .status-upcoming { background: rgba(46,204,113,0.12); color: var(--green); }
@@ -239,10 +243,10 @@
   .bracket-team .name { flex: 1; font-size: 12px; font-weight: 600; }
   .bracket-team .tbd { flex: 1; font-size: 12px; color: var(--text-muted); font-style: italic; }
   .bracket-score {
-    width: 26px; height: 26px; border-radius: 6px;
+    width: 22px; height: 22px; border-radius: 5px;
     border: 1.5px solid var(--border); background: rgba(255,255,255,0.05);
-    color: var(--text); font-size: 13px; font-weight: 700;
-    text-align: center; outline: none; -webkit-appearance: none; padding: 0;
+    color: var(--text); font-size: 11px; font-weight: 700;
+    text-align: center; outline: none; -webkit-appearance: none; padding: 0; line-height: 22px;
   }
   .bracket-score:focus { border-color: var(--accent); background: rgba(200,164,21,0.1); }
   .bracket-date {
@@ -289,7 +293,7 @@
   </div>
   <div class="header-sub">
     <span class="dot"></span>
-    <span>美加墨 · 6月11日 - 7月19日</span>
+    <span>美加墨 · 实时比分 · 自动刷新</span>
     <span style="margin-left:auto">
       <button class="refresh-btn" id="refreshBtn" onclick="refreshScores()">
         <span class="icon">🔄</span> 刷新
@@ -528,7 +532,10 @@ function renderGroups() {
       const sc = getScore(m.id);
       const hs = sc ? sc.h : ''; const as = sc ? sc.a : '';
       const hv = sc !== null;
-      html += `<div class="match-row">
+      const isFinished = API_FINISHED[m.id];
+      const inputClass = isFinished ? 'score-input api-score' : (hv ? 'score-input has-value' : 'score-input');
+      const statusBadge = isFinished ? '<span class="match-status status-finished">完赛</span>' : '';
+      html += `<div class="match-row" style="${isFinished?'background:rgba(46,204,113,0.03)':''}">
         <div class="match-time">
           <span class="date">${m.m}/${m.d}</span>
           <span class="kickoff">${m.t}</span>
@@ -537,15 +544,16 @@ function renderGroups() {
           <span class="team-name">${T[m.home].name}</span>
         </div>
         <div class="score-box">
-          <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
-            data-match="${m.id}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
+          <input class="${inputClass}" type="number" min="0" max="99"
+            data-match="${m.id}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*" ${isFinished?'readonly':''}>
           <span class="score-divider">-</span>
-          <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
-            data-match="${m.id}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
+          <input class="${inputClass}" type="number" min="0" max="99"
+            data-match="${m.id}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*" ${isFinished?'readonly':''}>
         </div>
         <div class="team-cell right">
           <span class="team-name">${T[m.away].name}</span>
         </div>
+        ${statusBadge}
       </div>`;
     });
     html += '</div>';
@@ -569,7 +577,10 @@ function renderSchedule() {
     const sc = getScore(m.id);
     const hs = sc ? sc.h : ''; const as = sc ? sc.a : '';
     const hv = sc !== null;
-    html += `<div class="match-row" style="background:var(--bg-card);border-radius:10px;margin-bottom:5px;border:1px solid var(--border);">
+    const isFinished = API_FINISHED[m.id];
+    const inputClass = isFinished ? 'score-input api-score' : (hv ? 'score-input has-value' : 'score-input');
+    const statusBadge = isFinished ? '<span class="match-status status-finished">完赛</span>' : '';
+    html += `<div class="match-row" style="background:${isFinished?'rgba(46,204,113,0.04)':'var(--bg-card)'};border-radius:10px;margin-bottom:5px;border:1px solid var(--border);">
       <div class="match-time">
         <span class="kickoff">${m.t}</span>
       </div>
@@ -578,15 +589,16 @@ function renderSchedule() {
         <span class="team-name">${T[m.home].name}</span>
       </div>
       <div class="score-box">
-        <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
-          data-match="${m.id}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
+        <input class="${inputClass}" type="number" min="0" max="99"
+          data-match="${m.id}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*" ${isFinished?'readonly':''}>
         <span class="score-divider">-</span>
-        <input class="score-input ${hv?'has-value':''}" type="number" min="0" max="99"
-          data-match="${m.id}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
+        <input class="${inputClass}" type="number" min="0" max="99"
+          data-match="${m.id}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*" ${isFinished?'readonly':''}>
       </div>
       <div class="team-cell right">
         <span class="team-name">${T[m.away].name}</span>
       </div>
+      ${statusBadge}
     </div>`;
   });
   html += '</div>';
@@ -759,9 +771,10 @@ function renderInfo() {
       <h3 style="color:var(--green);">📱 使用说明</h3>
       <div style="font-size:12px;line-height:1.8;color:var(--text-muted);">
         ✅ 所有时间已换算为<strong style="color:var(--text)">北京时间（CST/UTC+8）</strong><br>
-        ✅ 点击比分框可输入预测比分<br>
+        ✅ 已完赛比分<strong style="color:var(--green)">自动从 API 获取</strong>（每60秒刷新）<br>
+        ✅ 未开赛比赛点击比分框可输入预测比分<br>
         ✅ 数据自动保存到浏览器本地<br>
-        ✅ 积分榜根据输入比分自动计算<br>
+        ✅ 积分榜根据比分自动计算<br>
         ✅ 完美适配 iPhone 手机浏览器
       </div>
     </div>
@@ -797,22 +810,133 @@ function showToast(msg) {
   t._t = setTimeout(() => t.classList.remove('show'), 1200);
 }
 
-async function refreshScores() {
+// ===== API 英文名 → 队伍代码映射 =====
+const API_NAME_MAP = {
+  'Mexico':'MEX','South Africa':'RSA','South Korea':'KOR','Czech Republic':'CZE',
+  'Canada':'CAN','Bosnia and Herzegovina':'BIH','Qatar':'QAT','Switzerland':'SUI',
+  'Brazil':'BRA','Morocco':'MAR','Haiti':'HAI','Scotland':'SCO',
+  'United States':'USA','Paraguay':'PAR','Australia':'AUS','Turkey':'TUR',
+  'Germany':'GER','Curaçao':'CUW','Ivory Coast':'CIV','Ecuador':'ECU',
+  'Netherlands':'NED','Japan':'JPN','Sweden':'SWE','Tunisia':'TUN',
+  'Belgium':'BEL','Egypt':'EGY','Iran':'IRN','New Zealand':'NZL',
+  'Spain':'ESP','Cape Verde':'CPV','Saudi Arabia':'KSA','Uruguay':'URU',
+  'France':'FRA','Senegal':'SEN','Iraq':'IRQ','Norway':'NOR',
+  'Argentina':'ARG','Algeria':'ALG','Austria':'AUT','Jordan':'JOR',
+  'Portugal':'POR','Democratic Republic of the Congo':'COD','Uzbekistan':'UZB','Colombia':'COL',
+  'England':'ENG','Croatia':'CRO','Ghana':'GHA','Panama':'PAN'
+};
+
+// ===== 自动获取实时比分 =====
+const API_URL = 'https://worldcup26.ir/get/games';
+let API_FINISHED = {};  // 从 API 获取的已完赛比赛 ID 集合
+
+async function fetchLiveScores() {
   const btn = document.getElementById('refreshBtn');
   btn.classList.add('loading');
-  showToast('正在获取最新比分...');
+  showToast('正在获取实时比分...');
+
   try {
-    const now = new Date();
-    const isLive = now >= new Date(2026,5,11) && now <= new Date(2026,6,20);
-    if (!isLive) { showToast('赛事尚未开始，请自行输入预测'); }
-    else {
-      showToast('尝试获取实时数据...');
+    const resp = await fetch(API_URL);
+    if (!resp.ok) throw new Error('API 返回 ' + resp.status);
+    const data = await resp.json();
+    const games = data.games || [];
+
+    let updated = 0;
+    let newFinished = {};
+
+    games.forEach(g => {
+      // 只处理已完赛的小组赛（type=group）
+      if (g.finished !== 'TRUE' || g.type !== 'group') return;
+
+      const homeCode = API_NAME_MAP[g.home_team_name_en];
+      const awayCode = API_NAME_MAP[g.away_team_name_en];
+      if (!homeCode || !awayCode) return;
+
+      // 在 ALL_MATCHES 中查找对应比赛（匹配双方队伍和小组）
+      const match = ALL_MATCHES.find(m =>
+        m.g === g.group &&
+        ((m.home === homeCode && m.away === awayCode) ||
+         (m.home === awayCode && m.away === homeCode))
+      );
+      if (!match) return;
+
+      const homeScore = parseInt(g.home_score);
+      const awayScore = parseInt(g.away_score);
+      if (isNaN(homeScore) || isNaN(awayScore)) return;
+
+      // 检查 API 返回的主客队是否与本地一致，不一致则交换比分
+      const existing = getScore(match.id);
+      const isHomeMatch = (match.home === homeCode);
+
+      const finalH = isHomeMatch ? homeScore : awayScore;
+      const finalA = isHomeMatch ? awayScore : homeScore;
+
+      // 存储到 localStorage（API 数据优先）
+      const oldH = existing ? existing.h : '';
+      const oldA = existing ? existing.a : '';
+      if (String(finalH) !== String(oldH) || String(finalA) !== String(oldA)) {
+        saveScore(match.id, String(finalH), String(finalA));
+        updated++;
+      }
+
+      // 记录已完赛状态
+      newFinished[match.id] = true;
+    });
+
+    API_FINISHED = newFinished;
+
+    // 同时处理淘汰赛（type=r32/r16/qf/sf/third/final）
+    const koTypeMap = { 'r32':0, 'r16':1, 'qf':2, 'sf':3, 'third':4, 'final':5 };
+    games.forEach(g => {
+      if (g.finished !== 'TRUE' || g.type === 'group') return;
+      // 淘汰赛暂时不做映射，因为淘汰赛数据结构是 TBD
+    });
+
+    if (updated > 0) {
+      showToast(`✅ 已更新 ${updated} 场比赛结果`);
+      // 重新渲染当前页面
+      renderContent(currentTab);
+    } else {
+      // 检查是否有任何已完赛的比赛
+      const finishedCount = games.filter(g => g.finished === 'TRUE' && g.type === 'group').length;
+      if (finishedCount > 0) {
+        showToast('✅ 比分已是最新');
+      } else {
+        showToast('暂无已完赛的比赛');
+      }
     }
-  } catch(e) { showToast('网络异常，请稍后再试'); }
+
+  } catch(e) {
+    console.error('获取比分失败:', e);
+    showToast('❌ 获取失败，请稍后再试');
+  }
+
   btn.classList.remove('loading');
 }
 
-document.addEventListener('DOMContentLoaded', () => renderContent('groups'));
+// 刷新按钮
+async function refreshScores() {
+  await fetchLiveScores();
+}
+
+// ===== 自动刷新定时器 =====
+let _autoRefreshTimer = null;
+
+function startAutoRefresh() {
+  // 每 60 秒自动刷新一次
+  if (_autoRefreshTimer) clearInterval(_autoRefreshTimer);
+  _autoRefreshTimer = setInterval(() => {
+    fetchLiveScores();
+  }, 60000);
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  renderContent('groups');
+  // 页面加载时自动获取一次比分
+  fetchLiveScores();
+  // 启动自动刷新
+  startAutoRefresh();
+});
 </script>
 </body>
 </html>
