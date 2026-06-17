@@ -269,6 +269,48 @@
   .info-item .label { color: var(--text-muted); }
   .info-item .value { font-weight: 600; }
 
+  /* 射手榜 */
+  .scorer-card {
+    background: linear-gradient(135deg, rgba(86,4,46,0.35) 0%, rgba(19,25,40,0.6) 100%);
+    border: 1px solid rgba(200,164,21,0.25);
+    border-radius: 14px; padding: 14px; margin-bottom: 14px;
+  }
+  .scorer-card h3 {
+    font-size: 14px; color: var(--accent); margin-bottom: 10px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .scorer-card.updated h3::after {
+    content: '🟢 实时'; font-size: 10px; color: var(--green);
+    margin-left: auto; font-weight: 400;
+  }
+  .scorer-list { list-style: none; }
+  .scorer-row {
+    display: flex; align-items: center; gap: 8px;
+    padding: 6px 4px; border-bottom: 1px solid rgba(30,42,66,0.4);
+    font-size: 12px;
+  }
+  .scorer-row:last-child { border-bottom: none; }
+  .scorer-rank {
+    width: 24px; text-align: center; font-weight: 700; flex-shrink: 0;
+    color: var(--text-muted); font-size: 11px;
+  }
+  .scorer-row.top3 .scorer-rank { color: var(--accent); font-size: 13px; }
+  .scorer-name { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .scorer-name .cn { font-size: 11px; color: var(--text-muted); font-weight: 400; margin-left: 4px; }
+  .scorer-team {
+    color: var(--text-muted); font-size: 10px; font-weight: 500;
+    background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px;
+  }
+  .scorer-goals {
+    font-weight: 800; color: var(--accent-light); font-size: 14px;
+    min-width: 28px; text-align: right; flex-shrink: 0;
+  }
+  .scorer-goals::after { content: '⚽'; font-size: 9px; margin-left: 1px; }
+  .scorer-empty {
+    text-align: center; color: var(--text-muted); font-size: 12px;
+    padding: 20px 10px;
+  }
+
   /* 日期分组标题 */
   .date-title {
     font-size: 13px; font-weight: 700; color: var(--accent);
@@ -737,6 +779,8 @@ function renderKnockout() {
 // ===== 赛事信息 =====
 function renderInfo() {
   return `
+    ${renderCurrentScorers()}
+    ${renderAllTimeScorers()}
     <div class="info-card">
       <h3>🏆 2026 FIFA 世界杯（美加墨）</h3>
       <div class="info-item"><span class="label">主办国</span><span class="value">美国 · 加拿大 · 墨西哥</span></div>
@@ -829,6 +873,387 @@ const API_NAME_MAP = {
 // ===== 自动获取实时比分 =====
 const API_URL = 'https://worldcup26.ir/get/games';
 let API_FINISHED = {};  // 从 API 获取的已完赛比赛 ID 集合
+let CURRENT_SCORERS = [];  // 本届射手榜缓存
+let SCORERS_UPDATED = false;  // 射手榜是否有数据
+
+// ===== 历史世界杯总射手榜（静态数据，来源：FIFA官方统计） =====
+const ALLTIME_SCORERS = [
+  { name: 'Miroslav Klose', team: 'GER', goals: 16, tournaments: '2002-2014' },
+  { name: 'Ronaldo Nazário', team: 'BRA', goals: 15, tournaments: '1994-2006' },
+  { name: 'Gerd Müller', team: 'GER', goals: 14, tournaments: '1970-1974' },
+  { name: 'Just Fontaine', team: 'FRA', goals: 13, tournaments: '1958' },
+  { name: 'Lionel Messi', team: 'ARG', goals: 13, tournaments: '2006-2022' },
+  { name: 'Pelé', team: 'BRA', goals: 12, tournaments: '1958-1970' },
+  { name: 'Sándor Kocsis', team: 'HUN', goals: 11, tournaments: '1954' },
+  { name: 'Jürgen Klinsmann', team: 'GER', goals: 11, tournaments: '1990-1998' },
+  { name: 'Helmut Rahn', team: 'GER', goals: 10, tournaments: '1954-1958' },
+  { name: 'Gary Lineker', team: 'ENG', goals: 10, tournaments: '1986-1992' },
+  { name: 'Gabriel Batistuta', team: 'ARG', goals: 10, tournaments: '1994-2002' },
+  { name: 'Teofilo Cubillas', team: 'PER', goals: 10, tournaments: '1970-1978' },
+  { name: 'Thomas Müller', team: 'GER', goals: 10, tournaments: '2010-2018' },
+  { name: 'Grzegorz Lato', team: 'POL', goals: 10, tournaments: '1974-1982' },
+  { name: 'Kylian Mbappé', team: 'FRA', goals: 12, tournaments: '2018-2022' },
+  { name: 'Eusébio', team: 'POR', goals: 9, tournaments: '1966' },
+  { name: 'Christian Vieri', team: 'ITA', goals: 9, tournaments: '1998-2002' },
+  { name: 'Vavá', team: 'BRA', goals: 9, tournaments: '1958-1962' },
+  { name: 'Diego Maradona', team: 'ARG', goals: 8, tournaments: '1982-1994' },
+  { name: 'Rivaldo', team: 'BRA', goals: 8, tournaments: '1998-2002' },
+  { name: 'Oscar Míguez', team: 'URU', goals: 8, tournaments: '1950-1954' },
+  { name: 'Luís Suárez', team: 'URU', goals: 8, tournaments: '2010-2018' },
+  { name: 'Geoff Hurst', team: 'ENG', goals: 8, tournaments: '1966-1970' },
+  { name: 'Neymar', team: 'BRA', goals: 8, tournaments: '2014-2022' },
+  { name: 'Cristiano Ronaldo', team: 'POR', goals: 8, tournaments: '2006-2022' }
+];
+
+// 按进球数排序历史射手榜（并列时按姓氏字母）
+const ALLTIME_BASE_SORTED = [...ALLTIME_SCORERS].sort((a, b) => {
+  if (b.goals !== a.goals) return b.goals - a.goals;
+  return a.name.localeCompare(b.name);
+});
+
+// 合并历史射手榜 + 2026本届进球数，返回新的排序总榜
+// 手动指定 2026 缩写 → 历史全名的映射（避免误匹配）
+const SCORER_ALIAS_TO_FULL = {
+  'k. mbappé': 'kylian mbappé',
+  'l. messi': 'lionel messi',
+};
+
+function buildAllTimeScorers() {
+  // 以历史数据为基础，复制一份
+  const merged = {};
+  ALLTIME_SCORERS.forEach(s => {
+    const key = s.name.toLowerCase().trim();
+    merged[key] = { name: s.name, team: s.team, goals: s.goals };
+  });
+
+  // 把 2026 本届射手数据合并进去
+  if (CURRENT_SCORERS && CURRENT_SCORERS.length > 0) {
+    CURRENT_SCORERS.forEach(s => {
+      const key = s.name.toLowerCase().trim();
+
+      // 1. 直接匹配
+      let matchedKey = null;
+      if (merged[key]) {
+        matchedKey = key;
+      } else {
+        // 2. 通过别名表匹配（缩写→全名）
+        const alias = SCORER_ALIAS_TO_FULL[key];
+        if (alias && merged[alias]) {
+          matchedKey = alias;
+        }
+      }
+
+      if (matchedKey) {
+        merged[matchedKey].goals += s.goals;
+      } else {
+        // 新球员（历史榜无记录），直接加入
+        merged[key] = { name: s.name, team: s.team, goals: s.goals };
+      }
+    });
+  }
+
+  // 排序并返回
+  return Object.values(merged).sort((a, b) => {
+    if (b.goals !== a.goals) return b.goals - a.goals;
+    return a.name.localeCompare(b.name);
+  });
+}
+
+// ===== 球员中文名映射字典 =====
+// key 统一用小写匹配
+const SCORER_CN_MAP = {
+  // === 历史射手榜 ===
+  'miroslav klose': '克洛泽',
+  'ronaldo nazário': '罗纳尔多（大罗）',
+  'ronaldo nazario': '罗纳尔多（大罗）',
+  'gerd müller': '盖德·穆勒',
+  'gerd muller': '盖德·穆勒',
+  'just fontaine': '方丹',
+  'lionel messi': '梅西',
+  'l. messi': '梅西',
+  'pelé': '贝利',
+  'pele': '贝利',
+  'sándor kocsis': '柯奇士',
+  'sandor kocsis': '柯奇士',
+  'jürgen klinsmann': '克林斯曼',
+  'jurgen klinsmann': '克林斯曼',
+  'helmut rahn': '拉恩',
+  'gary lineker': '莱因克尔',
+  'gabriel batistuta': '巴蒂斯图塔',
+  'teofilo cubillas': '库维拉斯',
+  'thomas müller': '托马斯·穆勒',
+  'thomas muller': '托马斯·穆勒',
+  'grzegorz lato': '拉托',
+  'kylian mbappé': '姆巴佩',
+  'k. mbappé': '姆巴佩',
+  'eusébio': '尤西比奥',
+  'eusebio': '尤西比奥',
+  'christian vieri': '维耶里',
+  'vavá': '瓦瓦',
+  'vava': '瓦瓦',
+  'diego maradona': '马拉多纳',
+  'rivaldo': '里瓦尔多',
+  'oscar míguez': '米格斯',
+  'oscar miguez': '米格斯',
+  'luís suárez': '苏亚雷斯',
+  'luis suarez': '苏亚雷斯',
+  'geoff hurst': '赫斯特',
+  'neymar': '内马尔',
+  'cristiano ronaldo': 'C罗',
+
+  // === 本届射手榜已知球员 ===
+  'aymen hussein': '艾曼·侯赛因',
+  'elijah just': '贾斯特',
+  'erling haaland': '哈兰德',
+  'f. balogun': '巴洛贡',
+  'k. havertz': '哈弗茨',
+  'y.ayari': '阿亚里',
+  'y. ayari': '阿亚里',
+  'a. diallo': '迪亚洛',
+  'a. isak': '伊萨克',
+  'abdulelah al-amri': '阿姆里',
+  'ali avlvan': '阿夫拉万',
+  'b. barcola': '巴尔科拉',
+  'b. khoukhi': '胡希',
+  'breel embolo': '恩博洛',
+  'c. larin': '拉林',
+  'c. metcalfe': '梅特卡夫',
+  'c. summerville': '萨默维尔',
+  'd. bobadilla': '博巴迪利亚',
+  'd. undav': '翁达夫',
+  'emam ashour': '阿舒尔',
+  'felix nmecha': '恩梅查',
+  'g. reyna': '雷纳',
+  'h.g. oh': '吴贤揆',
+  'i. mbaye': '姆巴耶',
+  'i. saibari': '赛巴里',
+  'i.b. hwang': '黄仁范',
+  'izn alarb': '伊赞·阿拉布',
+  'j. mcginn': '麦金',
+  'j. musiala': '穆西亚拉',
+  'jovo lukić': '约沃·卢基奇',
+  'jovo lukic': '约沃·卢基奇',
+  'k. nakamura': '中村敬斗',
+  'k. ogawa': '小川航基',
+  'l. comenencia': '科梅嫩西亚',
+  'l. krejčí': '克雷伊奇',
+  'l. krejci': '克雷伊奇',
+  'leo østigård': '厄斯蒂高',
+  'leo ostigard': '厄斯蒂高',
+  'm. svanberg': '斯万贝里',
+  'maurício': '毛里西奥',
+  'mauricio': '毛里西奥',
+  'maximiliano araújo': '马克西米利亚诺·阿劳霍',
+  'maximiliano araujo': '马克西米利亚诺·阿劳霍',
+  'mohamed hany': '穆罕默德·哈尼',
+  'mohammad mohebi': '莫赫比',
+  'n. brown': '布朗',
+  'n. schlotterbeck': '施洛特贝克',
+  'nestory irankunda': '伊兰坤达',
+  'o. rekik': '雷基克',
+  'ramin rezaiian': '雷扎伊安',
+  'rvmanv ashmid': '阿什米德',
+  'v. gyökeres': '约克雷斯',
+  'v. gyokeres': '约克雷斯',
+  'v. júnior': '维尼修斯',
+  'v. junior': '维尼修斯',
+  'virgil van dijk': '范迪克',
+};
+
+// 获取球员中文名（不存在则返回空字符串）
+function getScorerCN(name) {
+  const key = name.toLowerCase().trim();
+  return SCORER_CN_MAP[key] || '';
+}
+
+// ===== 从 API 数据中解析本届射手榜 =====
+// 队伍代码 → 中文队名映射
+const CODE_TO_TEAM_CN = {};
+// 反向构建（在 init 时填充）
+function buildCodeMap() {
+  Object.entries(API_NAME_MAP).forEach(([en, code]) => {
+    const cnMap = {
+      'MEX':'墨西哥','RSA':'南非','KOR':'韩国','CZE':'捷克','CAN':'加拿大','BIH':'波黑',
+      'QAT':'卡塔尔','SUI':'瑞士','BRA':'巴西','MAR':'摩洛哥','HAI':'海地','SCO':'苏格兰',
+      'USA':'美国','PAR':'巴拉圭','AUS':'澳大利亚','TUR':'土耳其','GER':'德国','CUW':'库拉索',
+      'CIV':'科特迪瓦','ECU':'厄瓜多尔','NED':'荷兰','JPN':'日本','SWE':'瑞典','TUN':'突尼斯',
+      'BEL':'比利时','EGY':'埃及','IRN':'伊朗','NZL':'新西兰','ESP':'西班牙','CPV':'佛得角',
+      'KSA':'沙特','URU':'乌拉圭','FRA':'法国','SEN':'塞内加尔','IRQ':'伊拉克','NOR':'挪威',
+      'ARG':'阿根廷','ALG':'阿尔及利亚','AUT':'奥地利','JOR':'约旦','POR':'葡萄牙',
+      'COD':'刚果(金)','UZB':'乌兹别克斯坦','COL':'哥伦比亚','ENG':'英格兰','CRO':'克罗地亚',
+      'GHA':'加纳','PAN':'巴拿马'
+    };
+    CODE_TO_TEAM_CN[code] = cnMap[code] || code;
+  });
+}
+
+// 解析射手字符串，返回 {name, team, count} 列表
+// 格式: {"K. Mbappé 66'","B. Barcola 82'","K. Mbappé 90+6'"}
+function parseScorersFromGames(games) {
+  const scorerMap = {}; // key: normalizedName => {name, team, count}
+
+  games.forEach(g => {
+    if (g.finished !== 'TRUE') return;
+
+    const homeCode = API_NAME_MAP[g.home_team_name_en];
+    const awayCode = API_NAME_MAP[g.away_team_name_en];
+    if (!homeCode && !awayCode) return;
+
+    // 解析主队射手
+    try {
+      const homeScorers = parseScorerField(g.home_scorers);
+      homeScorers.forEach(s => addScorer(scorerMap, s, homeCode));
+    } catch(e) {}
+
+    // 解析客队射手
+    try {
+      const awayScorers = parseScorerField(g.away_scorers);
+      awayScorers.forEach(s => addScorer(scorerMap, s, awayCode));
+    } catch(e) {}
+  });
+
+  // 转为数组并排序
+  return Object.values(scorerMap)
+    .sort((a, b) => {
+      if (b.goals !== a.goals) return b.goals - a.goals;
+      return a.name.localeCompare(b.name);
+    });
+}
+
+// 解析射手字段（可能是字符串、字符串化的Set、或JSON数组）
+function parseScorerField(field) {
+  if (!field || field === '[]' || field === '{}' || field === 'None') return [];
+
+  let raw = field;
+
+  // 如果是对象（Set 序列化），直接取值
+  if (typeof raw === 'object') {
+    return Object.values(raw).map(v => String(v));
+  }
+
+  raw = String(raw).trim();
+
+  // 尝试 JSON 解析
+  try {
+    const parsed = JSON.parse(raw);
+    if (Array.isArray(parsed)) return parsed.map(v => String(v));
+    if (typeof parsed === 'object') return Object.values(parsed).map(v => String(v));
+  } catch(e) {}
+
+  // 处理 Python Set 字符串格式: {"name 45'", "name 67'"} 或 {'name 45\'', 'name 67\''}
+  // 关键：射手字符串里的 ' 代表「分」，不是引号
+  // 策略：先把转义引号和分号引号都处理好，再用正则提取
+  if (raw.includes('{') && raw.includes('}')) {
+    // 先去掉外层花括号
+    let inner = raw.replace(/^\s*\{\s*/, '').replace(/\s*\}\s*$/, '');
+    // 用正则匹配每个条目：匹配 "..." 或 '...' 之间的内容
+    // 但由于 ' 可能出现在分钟标记中（如 45'），需要特殊处理
+    // 方案：先替换所有 \" 和 \' 为标准引号，然后用正则匹配 "..." 段
+    const items = [];
+    // 匹配双引号包裹的内容
+    const dqMatches = inner.matchAll(/"([^"]+)"/g);
+    let hasDQ = false;
+    for (const m of dqMatches) {
+      items.push(m[1].trim());
+      hasDQ = true;
+    }
+    if (!hasDQ) {
+      // 尝试匹配单引号包裹的内容，但要处理 ' 分号问题
+      // 先把分钟标记的 ' 替换为特殊标记
+      const cleaned = inner.replace(/(\d+)'/g, '$1_MIN_');
+      const sqMatches = cleaned.matchAll(/'([^']+)'/g);
+      for (const m of sqMatches) {
+        items.push(m[1].replace(/_MIN_/g, "'").trim());
+      }
+    }
+    return items;
+  }
+
+  return [];
+}
+
+// 规范化球员名字：去掉分钟标记和罚球/乌龙标记
+function normalizeScorerName(raw) {
+  // 支持格式: "K. Mbappé 66'" / "K. Mbappé 90+6'" / "L. Messi 12'" / "K. Havertz 45'+5'(p)"
+  let name = raw.trim();
+  // 先去掉末尾的标记：(p) (pen) (og) 等
+  name = name.replace(/\s*\([a-z]{1,4}\)\s*$/i, '').trim();
+  // 逐层去掉末尾的分钟标记
+  name = name.replace(/\s*\d{1,3}\+\d{1,2}'?\s*$/, '').trim();  // 45+5' or 90+6
+  name = name.replace(/\s*\d{1,3}'\+\d{1,2}'?\s*$/, '').trim();  // 45'+5
+  name = name.replace(/\s*\d{1,3}'\s*$/, '').trim();             // 45'
+  name = name.replace(/\s*\d{1,3}\s*$/, '').trim();              // 45
+  return name;
+}
+
+function addScorer(map, rawName, teamCode) {
+  const name = normalizeScorerName(rawName);
+  if (!name || name.length < 2) return;
+  // 过滤明显非球员名（如空字符串、纯数字）
+  if (/^\d+$/.test(name)) return;
+
+  const key = name.toLowerCase();
+  if (map[key]) {
+    map[key].goals++;
+  } else {
+    map[key] = { name: name, team: teamCode, goals: 1 };
+  }
+}
+
+// 渲染单行射手记录
+function renderScorerRow(scorer, rank, isAllTime) {
+  const top3 = rank <= 3 ? 'top3' : '';
+  const teamCN = CODE_TO_TEAM_CN[scorer.team] || scorer.team;
+  const teamDisplay = isAllTime ? `<span class="scorer-team">${scorer.team}</span>` : `<span class="scorer-team">${teamCN}</span>`;
+  const cnName = getScorerCN(scorer.name);
+  const cnDisplay = cnName ? `<span class="cn">${cnName}</span>` : '';
+  return `
+    <li class="scorer-row ${top3}">
+      <span class="scorer-rank">${rank}</span>
+      <span class="scorer-name">${scorer.name}${cnDisplay}</span>
+      ${teamDisplay}
+      <span class="scorer-goals">${scorer.goals}</span>
+    </li>
+  `;
+}
+
+// 生成本届射手榜 HTML
+function renderCurrentScorers() {
+  if (!CURRENT_SCORERS || CURRENT_SCORERS.length === 0) {
+    return `
+      <div class="scorer-card">
+        <h3>🏅 本届射手榜 TOP 20</h3>
+        <div class="scorer-empty">⏳ 暂无射手数据，比赛开始后自动更新</div>
+      </div>
+    `;
+  }
+
+  const top20 = CURRENT_SCORERS.slice(0, 20);
+  const rows = top20.map((s, i) => renderScorerRow(s, i + 1, false)).join('');
+  const updatedClass = SCORERS_UPDATED ? 'updated' : '';
+
+  return `
+    <div class="scorer-card ${updatedClass}">
+      <h3>🏅 本届射手榜 TOP 20</h3>
+      <ul class="scorer-list">${rows}</ul>
+    </div>
+  `;
+}
+
+// 生成历史射手榜 HTML（含2026届数据）
+function renderAllTimeScorers() {
+  const allTimeSorted = buildAllTimeScorers();
+  const top20 = allTimeSorted.slice(0, 20);
+  const rows = top20.map((s, i) => renderScorerRow(s, i + 1, true)).join('');
+  const liveBadge = SCORERS_UPDATED ? 'updated' : '';
+
+  return `
+    <div class="scorer-card ${liveBadge}">
+      <h3>👑 历史总射手榜 TOP 20</h3>
+      <ul class="scorer-list">${rows}</ul>
+    </div>
+  `;
+}
 
 async function fetchLiveScores() {
   const btn = document.getElementById('refreshBtn');
@@ -885,6 +1310,24 @@ async function fetchLiveScores() {
 
     API_FINISHED = newFinished;
 
+    // ===== 解析本届射手榜 =====
+    try {
+      const scorers = parseScorersFromGames(games);
+      if (scorers.length > 0) {
+        const oldTopName = CURRENT_SCORERS.length > 0 ? CURRENT_SCORERS[0].name + CURRENT_SCORERS[0].goals : '';
+        const newTopName = scorers[0].name + scorers[0].goals;
+        CURRENT_SCORERS = scorers;
+        SCORERS_UPDATED = true;
+        // 如果射手榜有变化，也需要重新渲染信息页
+        if (oldTopName !== newTopName && currentTab === 'info') {
+          // 射手榜变化时需要刷新
+          updated = Math.max(updated, 1); // 触发重渲染
+        }
+      }
+    } catch(e) {
+      console.error('解析射手榜失败:', e);
+    }
+
     // 同时处理淘汰赛（type=r32/r16/qf/sf/third/final）
     const koTypeMap = { 'r32':0, 'r16':1, 'qf':2, 'sf':3, 'third':4, 'final':5 };
     games.forEach(g => {
@@ -931,6 +1374,7 @@ function startAutoRefresh() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+  buildCodeMap();
   renderContent('groups');
   // 页面加载时自动获取一次比分
   fetchLiveScores();
