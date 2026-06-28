@@ -241,6 +241,7 @@
   .bracket-team:last-child { border-bottom: none; }
   .bracket-team .flag { font-size: 18px; }
   .bracket-team .name { flex: 1; font-size: 12px; font-weight: 600; }
+  .bracket-team .team-name { flex: 1; font-size: 13px; font-weight: 700; }
   .bracket-team .tbd { flex: 1; font-size: 12px; color: var(--text-muted); font-style: italic; }
   .bracket-score {
     width: 22px; height: 22px; border-radius: 5px;
@@ -705,25 +706,26 @@ function renderStandings() {
 
 // ===== 淘汰赛 =====
 function renderKnockout() {
-  // 淘汰赛赛程（CST）
+  // 淘汰赛赛程（CST）— 小组赛结束后已确定对阵
+  // 队伍代码用 T[code].name 转中文显示
   const rounds = [
     { title:'🏟️ 1/16 决赛（6月29日 - 7月4日）', matches: [
-      { h:'B组第2名',a:'A组第2名',date:'6/29 03:00'},
-      { h:'C组第1名',a:'F组第2名',date:'6/30 01:00'},
-      { h:'E组第1名',a:'最佳第3名①',date:'6/30 04:30'},
-      { h:'F组第1名',a:'C组第2名',date:'6/30 09:00'},
-      { h:'E组第2名',a:'I组第2名',date:'7/1 01:00'},
-      { h:'I组第1名',a:'最佳第3名②',date:'7/1 05:00'},
-      { h:'A组第1名',a:'最佳第3名③',date:'7/1 09:00'},
-      { h:'L组第1名',a:'最佳第3名④',date:'7/2 00:00'},
-      { h:'G组第1名',a:'最佳第3名⑤',date:'7/2 04:00'},
-      { h:'D组第1名',a:'最佳第3名⑥',date:'7/2 08:00'},
-      { h:'H组第1名',a:'J组第2名',date:'7/3 03:00'},
-      { h:'K组第2名',a:'L组第2名',date:'7/3 07:00'},
-      { h:'B组第1名',a:'最佳第3名⑦',date:'7/3 11:00'},
-      { h:'D组第2名',a:'G组第2名',date:'7/4 02:00'},
-      { h:'J组第1名',a:'H组第2名',date:'7/4 06:00'},
-      { h:'K组第1名',a:'最佳第3名⑧',date:'7/4 09:30'}
+      { h:'CAN',a:'RSA',date:'6/29 03:00', label_h:'B组第2', label_a:'A组第2'},
+      { h:'BRA',a:'JPN',date:'6/30 01:00', label_h:'C组第1', label_a:'F组第2'},
+      { h:'GER',a:'PAR',date:'6/30 04:30', label_h:'E组第1', label_a:'最佳第3名①'},
+      { h:'NED',a:'MAR',date:'6/30 09:00', label_h:'F组第1', label_a:'C组第2'},
+      { h:'CIV',a:'NOR',date:'7/1 01:00', label_h:'E组第2', label_a:'I组第2'},
+      { h:'FRA',a:'SWE',date:'7/1 05:00', label_h:'I组第1', label_a:'最佳第3名②'},
+      { h:'MEX',a:'SEN',date:'7/1 09:00', label_h:'A组第1', label_a:'最佳第3名③'},
+      { h:'ENG',a:'COD',date:'7/2 00:00', label_h:'L组第1', label_a:'最佳第3名④'},
+      { h:'BEL',a:'ALG',date:'7/2 04:00', label_h:'G组第1', label_a:'最佳第3名⑤'},
+      { h:'USA',a:'BIH',date:'7/2 08:00', label_h:'D组第1', label_a:'最佳第3名⑥'},
+      { h:'ESP',a:'AUT',date:'7/3 03:00', label_h:'H组第1', label_a:'J组第2'},
+      { h:'POR',a:'CRO',date:'7/3 07:00', label_h:'K组第2', label_a:'L组第2'},
+      { h:'SUI',a:'ECU',date:'7/3 11:00', label_h:'B组第1', label_a:'最佳第3名⑦'},
+      { h:'AUS',a:'EGY',date:'7/4 02:00', label_h:'D组第2', label_a:'G组第2'},
+      { h:'ARG',a:'CPV',date:'7/4 06:00', label_h:'J组第1', label_a:'H组第2'},
+      { h:'COL',a:'GHA',date:'7/4 09:30', label_h:'K组第1', label_a:'最佳第3名⑧'}
     ]},
     { title:'⚡ 1/8 决赛（7月5日 - 7月8日）', matches: [
       { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/5 01:00'},
@@ -759,14 +761,23 @@ function renderKnockout() {
       const mid = `ko_${r.title.substring(2,6)}_${i}`;
       const sc = getScore(mid);
       const hs = sc?sc.h:'', as = sc?sc.a:'';
+      // 如果 m.h 是已知队名代码（在 T 字典里），显示队名+国旗
+      const isKnownTeam = (code) => T[code] !== undefined;
+      const renderTeam = (code, label) => {
+        if (isKnownTeam(code)) {
+          return `<span class="flag">${T[code].flag}</span><span class="team-name">${T[code].name}</span>`;
+        }
+        // 占位符（后续轮次）
+        return `<span class="flag">⚽</span><span class="tbd">${code}</span>`;
+      };
       html += `<div class="bracket-match">
         <div class="bracket-date">${m.date} CST</div>
         <div class="bracket-team">
-          <span class="flag">⚽</span><span class="tbd">${m.h}</span>
+          ${renderTeam(m.h, m.label_h)}
           <input class="bracket-score" type="number" min="0" max="99" data-match="${mid}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="bracket-team">
-          <span class="flag">⚽</span><span class="tbd">${m.a}</span>
+          ${renderTeam(m.a, m.label_a)}
           <input class="bracket-score" type="number" min="0" max="99" data-match="${mid}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
         </div>
       </div>`;
