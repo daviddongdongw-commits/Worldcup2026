@@ -234,27 +234,60 @@
     background: var(--bg-card); border-radius: 11px;
     margin-bottom: 6px; overflow: hidden; border: 1px solid var(--border);
   }
+  .bracket-match.finished {
+    border-color: rgba(46,204,113,0.4);
+    box-shadow: 0 0 8px rgba(46,204,113,0.12);
+  }
   .bracket-team {
     display: flex; align-items: center; padding: 8px 12px; gap: 6px;
     border-bottom: 1px solid rgba(30,42,66,0.3);
+    transition: all 0.3s;
   }
   .bracket-team:last-child { border-bottom: none; }
-  .bracket-team .flag { font-size: 18px; }
+  .bracket-team .flag { font-size: 18px; transition: filter 0.3s; }
   .bracket-team .name { flex: 1; font-size: 12px; font-weight: 600; }
-  .bracket-team .team-name { flex: 1; font-size: 13px; font-weight: 700; }
-  .bracket-team .tbd { flex: 1; font-size: 12px; color: var(--text-muted); font-style: italic; }
+  .bracket-team .team-name { font-size: 13px; font-weight: 700; }
+  .bracket-team .tbd { font-size: 12px; color: var(--text-muted); font-style: italic; }
+  .bracket-team .spacer { flex: 1; }
+  .bracket-team:not(.winner) .team-name,
+  .bracket-team:not(.winner) .tbd { flex: 1; }
+
+  /* 淘汰赛已完赛 — 赢方高亮 */
+  .bracket-team.winner {
+    background: linear-gradient(90deg, rgba(46,204,113,0.15) 0%, rgba(46,204,113,0.03) 100%);
+  }
+  .bracket-team.winner .team-name {
+    color: var(--green); font-size: 13px; font-weight: 700;
+  }
+  .bracket-team.winner .advance-tag {
+    font-size: 10px; color: var(--green); font-weight: 600;
+    background: rgba(46,204,113,0.2); padding: 1px 4px; border-radius: 3px;
+    margin-left: 4px; flex-shrink: 0; letter-spacing: 0.5px;
+  }
+  /* 淘汰赛已完赛 — 输方暗淡 */
+  .bracket-team.loser { opacity: 0.5; }
+  .bracket-team.loser .team-name { text-decoration: line-through; text-decoration-color: rgba(255,255,255,0.2); }
+  .bracket-team.loser .flag { filter: grayscale(0.6); }
+
   .bracket-score {
     width: 22px; height: 22px; border-radius: 5px;
     border: 1.5px solid var(--border); background: rgba(255,255,255,0.05);
     color: var(--text); font-size: 11px; font-weight: 700;
     text-align: center; outline: none; -webkit-appearance: none; padding: 0; line-height: 22px;
+    align-self: center;
   }
   .bracket-score:focus { border-color: var(--accent); background: rgba(200,164,21,0.1); }
+  .bracket-score.api-score {
+    border-color: var(--green); background: rgba(46,204,113,0.15);
+    color: var(--green); font-weight: 800; pointer-events: none;
+  }
+  .bracket-team.winner .bracket-score.api-score {
+    font-size: 12px; box-shadow: 0 0 6px rgba(46,204,113,0.3);
+  }
   .bracket-date {
     font-size: 10px; color: var(--text-muted); text-align: center;
     padding: 3px; background: rgba(86,4,46,0.15);
   }
-
   /* 信息卡片 */
   .info-card {
     background: linear-gradient(135deg, rgba(86,4,46,0.3) 0%, rgba(86,4,46,0.1) 100%);
@@ -704,30 +737,50 @@ function renderStandings() {
   return html;
 }
 
+// ===== 淘汰赛 R32 对阵数据（供 fetchLiveScores 匹配用）=====
+const R32_MATCHUPS = [
+  { id:'ko_r32_0',  h:'CAN', a:'RSA' },
+  { id:'ko_r32_1',  h:'BRA', a:'JPN' },
+  { id:'ko_r32_2',  h:'GER', a:'PAR' },
+  { id:'ko_r32_3',  h:'NED', a:'MAR' },
+  { id:'ko_r32_4',  h:'CIV', a:'NOR' },
+  { id:'ko_r32_5',  h:'FRA', a:'SWE' },
+  { id:'ko_r32_6',  h:'MEX', a:'ECU' },
+  { id:'ko_r32_7',  h:'ENG', a:'COD' },
+  { id:'ko_r32_8',  h:'BEL', a:'SEN' },
+  { id:'ko_r32_9',  h:'USA', a:'BIH' },
+  { id:'ko_r32_10', h:'ESP', a:'AUT' },
+  { id:'ko_r32_11', h:'POR', a:'CRO' },
+  { id:'ko_r32_12', h:'SUI', a:'ALG' },
+  { id:'ko_r32_13', h:'AUS', a:'EGY' },
+  { id:'ko_r32_14', h:'ARG', a:'CPV' },
+  { id:'ko_r32_15', h:'COL', a:'GHA' },
+];
+
 // ===== 淘汰赛 =====
 function renderKnockout() {
   // 淘汰赛赛程（CST）— 小组赛结束后已确定对阵
   // 队伍代码用 T[code].name 转中文显示
   const rounds = [
-    { title:'🏟️ 1/16 决赛（6月29日 - 7月4日）', matches: [
+    { id:'r32', title:'🏟️ 1/16 决赛（6月29日 - 7月4日）', matches: [
       { h:'CAN',a:'RSA',date:'6/29 03:00', label_h:'B组第2', label_a:'A组第2'},
       { h:'BRA',a:'JPN',date:'6/30 01:00', label_h:'C组第1', label_a:'F组第2'},
       { h:'GER',a:'PAR',date:'6/30 04:30', label_h:'E组第1', label_a:'最佳第3名①'},
       { h:'NED',a:'MAR',date:'6/30 09:00', label_h:'F组第1', label_a:'C组第2'},
       { h:'CIV',a:'NOR',date:'7/1 01:00', label_h:'E组第2', label_a:'I组第2'},
       { h:'FRA',a:'SWE',date:'7/1 05:00', label_h:'I组第1', label_a:'最佳第3名②'},
-      { h:'MEX',a:'SEN',date:'7/1 09:00', label_h:'A组第1', label_a:'最佳第3名③'},
+      { h:'MEX',a:'ECU',date:'7/1 09:00', label_h:'A组第1', label_a:'最佳第3名③'},
       { h:'ENG',a:'COD',date:'7/2 00:00', label_h:'L组第1', label_a:'最佳第3名④'},
-      { h:'BEL',a:'ALG',date:'7/2 04:00', label_h:'G组第1', label_a:'最佳第3名⑤'},
+      { h:'BEL',a:'SEN',date:'7/2 04:00', label_h:'G组第1', label_a:'最佳第3名⑤'},
       { h:'USA',a:'BIH',date:'7/2 08:00', label_h:'D组第1', label_a:'最佳第3名⑥'},
       { h:'ESP',a:'AUT',date:'7/3 03:00', label_h:'H组第1', label_a:'J组第2'},
       { h:'POR',a:'CRO',date:'7/3 07:00', label_h:'K组第2', label_a:'L组第2'},
-      { h:'SUI',a:'ECU',date:'7/3 11:00', label_h:'B组第1', label_a:'最佳第3名⑦'},
+      { h:'SUI',a:'ALG',date:'7/3 11:00', label_h:'B组第1', label_a:'最佳第3名⑦'},
       { h:'AUS',a:'EGY',date:'7/4 02:00', label_h:'D组第2', label_a:'G组第2'},
       { h:'ARG',a:'CPV',date:'7/4 06:00', label_h:'J组第1', label_a:'H组第2'},
       { h:'COL',a:'GHA',date:'7/4 09:30', label_h:'K组第1', label_a:'最佳第3名⑧'}
     ]},
-    { title:'⚡ 1/8 决赛（7月5日 - 7月8日）', matches: [
+    { id:'r16', title:'⚡ 1/8 决赛（7月5日 - 7月8日）', matches: [
       { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/5 01:00'},
       { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/5 05:00'},
       { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/6 04:00'},
@@ -737,20 +790,20 @@ function renderKnockout() {
       { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/8 00:00'},
       { h:'1/16决赛胜者',a:'1/16决赛胜者',date:'7/8 04:00'}
     ]},
-    { title:'🔥 1/4 决赛（7月10日 - 7月12日）', matches: [
+    { id:'qf', title:'🔥 1/4 决赛（7月10日 - 7月12日）', matches: [
       { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/10 04:00'},
       { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/11 03:00'},
       { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/12 05:00'},
       { h:'1/8决赛胜者',a:'1/8决赛胜者',date:'7/12 09:00'}
     ]},
-    { title:'🌟 半决赛（7月15日 - 7月16日）', matches: [
+    { id:'sf', title:'🌟 半决赛（7月15日 - 7月16日）', matches: [
       { h:'1/4决赛胜者',a:'1/4决赛胜者',date:'7/15 03:00'},
       { h:'1/4决赛胜者',a:'1/4决赛胜者',date:'7/16 03:00'}
     ]},
-    { title:'🥉 三四名决赛（7月19日）', matches: [
+    { id:'third', title:'🥉 三四名决赛（7月19日）', matches: [
       { h:'半决赛负方',a:'半决赛负方',date:'7/19 05:00'}
     ]},
-    { title:'🏆 决赛（7月20日 · 新泽西）', matches: [
+    { id:'final', title:'🏆 决赛（7月20日 · 新泽西）', matches: [
       { h:'半决赛胜方',a:'半决赛胜方',date:'7/20 03:00'}
     ]}
   ];
@@ -758,27 +811,44 @@ function renderKnockout() {
   rounds.forEach(r => {
     html += `<div class="bracket-round"><div class="bracket-round-title">${r.title}</div>`;
     r.matches.forEach((m,i) => {
-      const mid = `ko_${r.title.substring(2,6)}_${i}`;
+      const mid = `ko_${r.id}_${i}`;
       const sc = getScore(mid);
       const hs = sc?sc.h:'', as = sc?sc.a:'';
+      const isFinished = API_FINISHED[mid];
+      // 判断胜负（仅在有比分时）
+      const hVal = hs !== '' ? parseInt(hs) : NaN;
+      const aVal = as !== '' ? parseInt(as) : NaN;
+      const hasResult = !isNaN(hVal) && !isNaN(aVal) && (hVal !== aVal);
+      const hClass = isFinished ? (hasResult ? (hVal > aVal ? 'winner' : 'loser') : '') : '';
+      const aClass = isFinished ? (hasResult ? (aVal > hVal ? 'winner' : 'loser') : '') : '';
+      const matchClass = isFinished ? 'finished' : '';
+      const scoreClass = isFinished ? 'bracket-score api-score' : 'bracket-score';
+      const hReadOnly = isFinished ? 'readonly' : '';
+      const aReadOnly = isFinished ? 'readonly' : '';
+
       // 如果 m.h 是已知队名代码（在 T 字典里），显示队名+国旗
       const isKnownTeam = (code) => T[code] !== undefined;
-      const renderTeam = (code, label) => {
+      const renderTeam = (code, isWinner) => {
+        let teamPart;
         if (isKnownTeam(code)) {
-          return `<span class="flag">${T[code].flag}</span><span class="team-name">${T[code].name}</span>`;
+          teamPart = `<span class="flag">${T[code].flag}</span><span class="team-name">${T[code].name}</span>`;
+        } else {
+          teamPart = `<span class="flag">⚽</span><span class="tbd">${code}</span>`;
         }
-        // 占位符（后续轮次）
-        return `<span class="flag">⚽</span><span class="tbd">${code}</span>`;
+        if (isWinner) {
+          return `${teamPart}<span class="spacer"></span><span class="advance-tag">晋级</span><span class="spacer"></span>`;
+        }
+        return teamPart;
       };
-      html += `<div class="bracket-match">
+      html += `<div class="bracket-match ${matchClass}">
         <div class="bracket-date">${m.date} CST</div>
-        <div class="bracket-team">
-          ${renderTeam(m.h, m.label_h)}
-          <input class="bracket-score" type="number" min="0" max="99" data-match="${mid}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*">
+        <div class="bracket-team ${hClass}">
+          ${renderTeam(m.h, hClass === 'winner')}
+          <input class="${scoreClass}" type="number" min="0" max="99" data-match="${mid}" data-side="h" value="${hs}" inputmode="numeric" pattern="[0-9]*" ${hReadOnly}>
         </div>
-        <div class="bracket-team">
-          ${renderTeam(m.a, m.label_a)}
-          <input class="bracket-score" type="number" min="0" max="99" data-match="${mid}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*">
+        <div class="bracket-team ${aClass}">
+          ${renderTeam(m.a, aClass === 'winner')}
+          <input class="${scoreClass}" type="number" min="0" max="99" data-match="${mid}" data-side="a" value="${as}" inputmode="numeric" pattern="[0-9]*" ${aReadOnly}>
         </div>
       </div>`;
     });
@@ -1204,11 +1274,50 @@ function addScorer(map, rawName, teamCode) {
   if (/^\d+$/.test(name)) return;
 
   const key = name.toLowerCase();
+
+  // 1. 直接匹配
   if (map[key]) {
     map[key].goals++;
-  } else {
-    map[key] = { name: name, team: teamCode, goals: 1 };
+    return;
   }
+
+  // 2. 缩写→全名匹配
+  // 例如 "K. Mbappé" 匹配已存在的 "Kylian Mbappé"
+  // 规则：如果名字以 "X. " 开头（缩写形式），检查是否有已存在的
+  // 全名 whose last name (最后一个单词) 和当前的一致
+  const isAbbrev = /^[A-Z]\.\s/.test(name);
+  if (isAbbrev) {
+    const lastName = name.split(' ').pop().toLowerCase();
+    // 在已存在的射手中查找同姓的
+    const matchKey = Object.keys(map).find(k => {
+      const existing = map[k];
+      const existingLast = existing.name.split(' ').pop().toLowerCase();
+      return existingLast === lastName && existing.team === teamCode;
+    });
+    if (matchKey) {
+      map[matchKey].goals++;
+      return;
+    }
+  } else {
+    // 3. 全名→缩写匹配（反方向）
+    // 例如先出现 "Kylian Mbappé"，后来又出现 "K. Mbappé"
+    // 也检查是否已有缩写形式
+    const lastName = name.split(' ').pop().toLowerCase();
+    const firstName = name.split(' ')[0];
+    const firstInitial = firstName.charAt(0).toUpperCase() + '.';
+    const abbrevKey = `${firstInitial}. ${name.split(' ').slice(1).join(' ')}`.toLowerCase();
+    if (map[abbrevKey]) {
+      // 合并到全名
+      map[key] = map[abbrevKey];
+      delete map[abbrevKey];
+      map[key].name = name; // 用全名替换
+      map[key].goals++;
+      return;
+    }
+  }
+
+  // 4. 全新球员
+  map[key] = { name: name, team: teamCode, goals: 1 };
 }
 
 // 渲染单行射手记录
@@ -1339,11 +1448,38 @@ async function fetchLiveScores() {
       console.error('解析射手榜失败:', e);
     }
 
-    // 同时处理淘汰赛（type=r32/r16/qf/sf/third/final）
-    const koTypeMap = { 'r32':0, 'r16':1, 'qf':2, 'sf':3, 'third':4, 'final':5 };
+    // ===== 处理淘汰赛比分（R32）=====
     games.forEach(g => {
-      if (g.finished !== 'TRUE' || g.type === 'group') return;
-      // 淘汰赛暂时不做映射，因为淘汰赛数据结构是 TBD
+      if (g.finished !== 'TRUE' || g.type !== 'r32') return;
+
+      const homeCode = API_NAME_MAP[g.home_team_name_en];
+      const awayCode = API_NAME_MAP[g.away_team_name_en];
+      if (!homeCode || !awayCode) return;
+
+      // 在 R32_MATCHUPS 中查找对应比赛（匹配双方队伍，不限主客）
+      const matchup = R32_MATCHUPS.find(m =>
+        (m.h === homeCode && m.a === awayCode) ||
+        (m.h === awayCode && m.a === homeCode)
+      );
+      if (!matchup) return;
+
+      const homeScore = parseInt(g.home_score);
+      const awayScore = parseInt(g.away_score);
+      if (isNaN(homeScore) || isNaN(awayScore)) return;
+
+      const existing = getScore(matchup.id);
+      const isHomeMatch = (matchup.h === homeCode);
+      const finalH = isHomeMatch ? homeScore : awayScore;
+      const finalA = isHomeMatch ? awayScore : homeScore;
+
+      const oldH = existing ? existing.h : '';
+      const oldA = existing ? existing.a : '';
+      if (String(finalH) !== String(oldH) || String(finalA) !== String(oldA)) {
+        saveScore(matchup.id, String(finalH), String(finalA));
+        updated++;
+      }
+
+      newFinished[matchup.id] = true;
     });
 
     if (updated > 0) {
@@ -1352,7 +1488,7 @@ async function fetchLiveScores() {
       renderContent(currentTab);
     } else {
       // 检查是否有任何已完赛的比赛
-      const finishedCount = games.filter(g => g.finished === 'TRUE' && g.type === 'group').length;
+      const finishedCount = games.filter(g => g.finished === 'TRUE').length;
       if (finishedCount > 0) {
         showToast('✅ 比分已是最新');
       } else {
